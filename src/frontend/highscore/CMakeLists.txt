@@ -7,6 +7,7 @@ set(SOURCES_HIGHSCORE
     Platform.cpp
 
     ../glad/glad.c
+    ../mic_blow.h
 )
 
 find_package(PkgConfig REQUIRED)

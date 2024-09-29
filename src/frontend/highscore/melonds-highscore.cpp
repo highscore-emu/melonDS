@@ -10,6 +10,8 @@
 #include "SPI.h"
 #include "SPU.h"
 
+#include "../mic_blow.h"
+
 #include <cmath>
 
 #include "glad/glad.h"
@@ -19,6 +21,7 @@
 #define SAMPLE_RATE 32823.6328125
 #define MAX_SAMPLES 1500
 #define VOLUME_MULTIPLIER 1.5
+#define MIC_SAMPLE_LENGTH 735
 #define N_BAD_FRAMES 1
 
 #define USE_COMPUTE 0
@@ -434,6 +437,28 @@ melonds_core_poll_input (HsCore *core, HsInputState *input_state)
     self->console->TouchScreen (x, y);
   } else {
     self->console->ReleaseScreen ();
+  }
+
+  static int sample_pos = 0;
+
+  if (input_state->nintendo_ds.mic_active) {
+    int sample_len = sizeof (mic_blow) / sizeof (u16);
+
+    s16 tmp[MIC_SAMPLE_LENGTH];
+
+    for (int i = 0; i < MIC_SAMPLE_LENGTH; i++) {
+      tmp[i] = mic_blow[sample_pos] ^ 0x8000;
+
+      sample_pos++;
+      if (sample_pos >= sample_len)
+        sample_pos = 0;
+    }
+
+    self->console->MicInputFrame (tmp, MIC_SAMPLE_LENGTH);
+  } else {
+    sample_pos = 0;
+
+    self->console->MicInputFrame (nullptr, 0);
   }
 }
 
