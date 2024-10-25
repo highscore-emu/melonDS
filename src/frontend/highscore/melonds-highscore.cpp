@@ -360,7 +360,7 @@ melonds_core_start (HsCore *core)
 }
 
 static void
-melonds_core_reset (HsCore *core)
+melonds_core_reset (HsCore *core, gboolean hard)
 {
   melonDSCore *self = MELONDS_CORE (core);
 
