@@ -14,7 +14,7 @@ find_package(PkgConfig REQUIRED)
 
 cmake_policy(SET CMP0070 NEW)
 
-execute_process(COMMAND git describe --always --tags
+execute_process(COMMAND git describe --always --tags --dirty
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
     OUTPUT_VARIABLE GIT_VERSION
     OUTPUT_STRIP_TRAILING_WHITESPACE)
