@@ -14,16 +14,10 @@ find_package(PkgConfig REQUIRED)
 
 cmake_policy(SET CMP0070 NEW)
 
-execute_process(COMMAND git describe --always --tags --dirty
+execute_process(COMMAND git describe --always --dirty --match ''
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-    OUTPUT_VARIABLE GIT_VERSION
+    OUTPUT_VARIABLE GIT_COMMIT
     OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-if("${GIT_VERSION}" STREQUAL "")
-    set(HS_VERSION "${CMAKE_PROJECT_VERSION}")
-else()
-    set(HS_VERSION "${GIT_VERSION}")
-endif()
 
 pkg_check_modules(highscore-1 REQUIRED IMPORTED_TARGET highscore-1)
 pkg_check_modules(gobject-2.0 REQUIRED IMPORTED_TARGET gobject-2.0)
@@ -46,7 +40,8 @@ target_compile_definitions(melonds-highscore PUBLIC MELONDS_GL_HEADER=${MELONDS_
 target_compile_definitions(core PUBLIC MELONDS_GL_HEADER=${MELONDS_GL_HEADER})
 
 file(READ melonds.highscore.in TEXT)
-string(REPLACE "@version@" "${HS_VERSION}" TEXT "${TEXT}")
+string(REPLACE "@version@" "${CMAKE_PROJECT_VERSION}" TEXT "${TEXT}")
+string(REPLACE "@commit@" "${GIT_COMMIT}" TEXT "${TEXT}")
 file(GENERATE OUTPUT melonds.highscore CONTENT "${TEXT}")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS melonds.highscore.in)
 
