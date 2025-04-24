@@ -278,7 +278,7 @@ melonds_core_load_rom (HsCore      *core,
     return FALSE;
   }
 
-  self->gl_context = hs_core_create_gl_context (core, HS_GL_PROFILE_CORE, 3, 2, HS_GL_FLAGS_DEFAULT);
+  self->gl_context = hs_core_create_gl_context (core, HS_GL_API_GL, 3, 2, HS_GL_FLAGS_DEFAULT);
 
   if (hs_gl_context_realize (self->gl_context, NULL) && gladLoadGLLoader (get_proc_address)) {
     hs_gl_context_set_size (self->gl_context, SCREEN_WIDTH, SCREEN_HEIGHT * 2);
