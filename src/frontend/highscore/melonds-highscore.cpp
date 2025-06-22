@@ -24,6 +24,7 @@
 #define MIC_SAMPLE_LENGTH 735
 #define N_BAD_FRAMES 1
 
+#define USE_GL 0
 #define USE_COMPUTE 0
 
 using namespace melonDS;
@@ -37,12 +38,12 @@ struct _melonDSCore
   char *save_path;
 
   HsGLContext *gl_context;
+  gboolean compute;
+  int skip_frames;
 
   GLuint vertex_buffer;
   GLuint vertex_array;
   GLuint program;
-
-  int skip_frames;
 
   HsSoftwareContext *context;
 
@@ -278,28 +279,42 @@ melonds_core_load_rom (HsCore      *core,
     return FALSE;
   }
 
-  self->gl_context = hs_core_create_gl_context (core, HS_GL_API_GL, 3, 2, HS_GL_FLAGS_DEFAULT);
+  const char *renderer_env = g_getenv ("HIGHSCORE_MELONDS_RENDERER");
+  self->compute = !g_strcmp0 (renderer_env, "compute");
+  gboolean use_gl = !g_strcmp0 (renderer_env, "gl") || self->compute;
 
-  if (hs_gl_context_realize (self->gl_context, NULL) && gladLoadGLLoader (get_proc_address)) {
-    hs_gl_context_set_size (self->gl_context, SCREEN_WIDTH, SCREEN_HEIGHT * 2);
+  if (use_gl) {
+    self->gl_context = hs_core_create_gl_context (core, HS_GL_API_GL, 3, 2, HS_GL_FLAGS_DEFAULT);
 
-#if USE_COMPUTE
-    auto renderer = ComputeRenderer::New ();
-    renderer->SetRenderSettings (1, true);
-#else
-    auto renderer = GLRenderer::New ();
-    renderer->SetRenderSettings (false, 1);
-#endif
+    if (hs_gl_context_realize (self->gl_context, NULL) && gladLoadGLLoader (get_proc_address)) {
+      hs_gl_context_set_size (self->gl_context, SCREEN_WIDTH, SCREEN_HEIGHT * 2);
 
-    self->console->GPU.SetRenderer3D (std::move (renderer));
+      if (self->compute) {
+        auto renderer = ComputeRenderer::New ();
+        renderer->SetRenderSettings (1, true);
 
-    gl_init (self);
-  } else {
-    hs_gl_context_unrealize (self->gl_context);
-    g_clear_object (&self->gl_context);
+        self->console->GPU.SetRenderer3D (std::move (renderer));
 
-    hs_core_log (core, HS_LOG_WARNING, "Failed to initialize GL context, falling back to software renderer");
+        hs_core_log_literal (core, HS_LOG_MESSAGE, "Using compute GL renderer");
+      } else {
+        auto renderer = GLRenderer::New ();
+        renderer->SetRenderSettings (false, 1);
 
+        self->console->GPU.SetRenderer3D (std::move (renderer));
+
+        hs_core_log_literal (core, HS_LOG_MESSAGE, "Using GL renderer");
+      }
+
+      gl_init (self);
+    } else {
+      hs_gl_context_unrealize (self->gl_context);
+      g_clear_object (&self->gl_context);
+
+      hs_core_log (core, HS_LOG_WARNING, "Failed to initialize GL context, falling back to software renderer");
+    }
+  }
+
+  if (!self->gl_context) {
     self->context = hs_core_create_software_context (core, SCREEN_WIDTH, SCREEN_HEIGHT * 2, HS_PIXEL_FORMAT_B8G8R8X8);
 
     auto renderer = std::make_unique<SoftRenderer> ();
@@ -333,10 +348,8 @@ melonds_core_load_rom (HsCore      *core,
   if (self->console->NeedsDirectBoot ())
     self->console->SetupDirectBoot ("");
 
-#if USE_COMPUTE
-  if (self->gl_context)
+  if (self->gl_context && self->compute)
     OpenGL::LoadShaderCache ();
-#endif
 
   self->audio_buffer = g_new0 (gint16, MAX_SAMPLES);
 
@@ -383,10 +396,8 @@ melonds_core_stop (HsCore *core)
 {
   melonDSCore *self = MELONDS_CORE (core);
 
-#if USE_COMPUTE
-  if (self->gl_context)
+  if (self->gl_context && self->compute)
     OpenGL::SaveShaderCache ();
-#endif
 
   self->console->Halt ();
   self->console->Stop ();
@@ -402,9 +413,9 @@ melonds_core_stop (HsCore *core)
     glDeleteProgram (self->program);
 
     hs_gl_context_unrealize (self->gl_context);
+    g_clear_object (&self->gl_context);
   }
 
-  g_clear_object (&self->gl_context);
   g_clear_object (&self->context);
   g_clear_pointer (&self->rom_path, g_free);
   g_clear_pointer (&self->save_path, g_free);
