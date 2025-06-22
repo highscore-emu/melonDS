@@ -489,10 +489,11 @@ melonds_core_run_frame (HsCore *core)
   }
 
   size_t screen_size = (SCREEN_WIDTH * SCREEN_HEIGHT * 4);
-  u8 *vbuf0 = (u8*) hs_software_context_get_framebuffer (self->context);
+  u8 *vbuf0 = (u8*) hs_software_context_acquire_framebuffer (self->context);
   u8 *vbuf1 = vbuf0 + screen_size;
   memcpy (vbuf0, self->console->GPU.Framebuffer[self->console->GPU.FrontBuffer][0].get (), screen_size);
   memcpy (vbuf1, self->console->GPU.Framebuffer[self->console->GPU.FrontBuffer][1].get (), screen_size);
+  hs_software_context_release_framebuffer (self->context);
 }
 
 static gboolean
