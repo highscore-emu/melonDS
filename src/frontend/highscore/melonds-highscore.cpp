@@ -373,8 +373,8 @@ melonds_core_start (HsCore *core)
   self->skip_frames = N_BAD_FRAMES;
 }
 
-static void
-melonds_core_reset (HsCore *core, gboolean hard)
+static gboolean
+melonds_core_reset (HsCore *core, gboolean hard, GError **error)
 {
   melonDSCore *self = MELONDS_CORE (core);
 
@@ -385,6 +385,7 @@ melonds_core_reset (HsCore *core, gboolean hard)
 
   /* The first couple frames will be bad, skip them */
   self->skip_frames = N_BAD_FRAMES;
+  return TRUE;
 }
 
 static void
