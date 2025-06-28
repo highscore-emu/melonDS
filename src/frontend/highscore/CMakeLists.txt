@@ -45,5 +45,5 @@ string(REPLACE "@commit@" "${GIT_COMMIT}" TEXT "${TEXT}")
 file(GENERATE OUTPUT melonds.highscore CONTENT "${TEXT}")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS melonds.highscore.in)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/melonds.highscore DESTINATION ${CMAKE_INSTALL_LIBDIR}/highscore/cores)
-install(TARGETS melonds-highscore LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/highscore/cores)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/melonds.highscore DESTINATION ${CMAKE_INSTALL_LIBDIR}/highscore/cores/melonds)
+install(TARGETS melonds-highscore LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/highscore/cores/melonds)
