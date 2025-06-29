@@ -204,7 +204,7 @@ void EmuInstance::createWindow(int id)
     if (windowList[id])
         return;
 
-    MainWindow* win = new MainWindow(id, this, topWindow);
+    MainWindow* win = new MainWindow(id, this, mainWindow ? mainWindow : topWindow);
     if (!topWindow) topWindow = win;
     if (!mainWindow) mainWindow = win;
     windowList[id] = win;
@@ -406,6 +406,15 @@ void EmuInstance::setVSyncGL(bool vsync)
 void EmuInstance::makeCurrentGL()
 {
     mainWindow->makeCurrentGL();
+}
+
+void EmuInstance::releaseGL()
+{
+    for (int i = 0; i < kMaxWindows; i++)
+    {
+        if (windowList[i])
+            windowList[i]->releaseGL();
+    }
 }
 
 void EmuInstance::drawScreenGL()
