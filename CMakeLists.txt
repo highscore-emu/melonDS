@@ -110,5 +110,6 @@ endif()
 option(BUILD_HIGHSCORE "Build Highscore core" OFF)
 
 if (BUILD_HIGHSCORE)
+    set(HIGHSCORE_CORE_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/highscore/cores/melonds" CACHE PATH "Installed core directory (Highscore)")
     add_subdirectory(src/frontend/highscore)
 endif()
