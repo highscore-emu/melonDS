@@ -429,6 +429,11 @@ void Addon_RumbleStop(void* userdata)
   hs_core_rumble (core, 0, 0, 0, 0);
 }
 
+float Addon_MotionQuery(MotionQueryType type, void* userdata)
+{
+    return 0.0;
+}
+
 DynamicLibrary* DynamicLibrary_Load(const char* lib)
 {
     return nullptr;
