@@ -28,14 +28,6 @@
 namespace melonDS::Platform
 {
 
-void Init(int argc, char** argv)
-{
-}
-
-void DeInit()
-{
-}
-
 void SignalStop(StopReason reason, void* userdata)
 {
 }
@@ -45,13 +37,11 @@ int InstanceID()
     return 0;
 }
 
-std::string InstanceFileSuffix()
-{
-    return "";
-}
-
 constexpr char AccessMode(FileMode mode, bool file_exists)
 {
+    if (mode & FileMode::Append)
+        return  'a';
+
     if (!(mode & FileMode::Write))
         // If we're only opening the file for reading...
         return 'r';
@@ -97,30 +87,20 @@ FileHandle* OpenFile(const std::string& path, FileMode mode)
     return (FileHandle*) fopen (path.c_str (), mode_string.c_str ());
 }
 
-FileHandle* OpenLocalFile(const std::string& path, FileMode mode)
+std::string GetLocalFilePath(const std::string& filename)
 {
-    if (path == "shadercache") {
+    if (filename == "shadercache") {
         const char *cache_path = melonds_core_get_cache_path ();
 
-        if (mode & FileMode::Write) {
-          g_autoptr (GFile) cache_file = g_file_new_for_path (cache_path);
-          g_autoptr (GError) error = NULL;
-
-          if (!g_file_query_exists (cache_file, NULL) && !g_file_make_directory_with_parents (cache_file, NULL, &error)) {
-            g_autofree char *message = g_strdup_printf ("Failed to create cache dir: %s", error->message);
-
-            melonds_core_log (HS_LOG_CRITICAL, message);
-
-            return nullptr;
-          }
-        }
-
-        std::string full_path = std::string (cache_path) + "/" + path;
-
-        return OpenFile (full_path, mode);
+        return std::string (cache_path) + "/" + filename;
     }
 
-    return OpenFile (path, mode);
+    return filename;
+}
+
+FileHandle* OpenLocalFile(const std::string& path, FileMode mode)
+{
+    return OpenFile (GetLocalFilePath (path), mode);
 }
 
 bool CloseFile(FileHandle* file)
@@ -152,6 +132,39 @@ bool LocalFileExists(const std::string& name)
     if (!f) return false;
     CloseFile (f);
     return true;
+}
+
+bool CheckFileWritable(const std::string& filepath)
+{
+    FileHandle* file = Platform::OpenFile(filepath.c_str(), FileMode::Read);
+
+    if (file)
+    {
+        // if the file exists, check if it can be opened for writing.
+        Platform::CloseFile(file);
+        file = Platform::OpenFile(filepath.c_str(), FileMode::Append);
+        if (file)
+        {
+            Platform::CloseFile(file);
+            return true;
+        }
+        else return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
+bool CheckLocalFileWritable(const std::string& name)
+{
+    FileHandle* file = Platform::OpenLocalFile (name.c_str (), FileMode::Append);
+    if (file)
+    {
+        Platform::CloseFile (file);
+        return true;
+    }
+    else return false;
 }
 
 bool FileSeek(FileHandle* file, s64 offset, FileSeekOrigin origin)
@@ -288,6 +301,19 @@ void Semaphore_Wait(Semaphore* sema)
     sem_wait ((sem_t*) sema);
 }
 
+bool Semaphore_TryWait(Semaphore* sema, int timeout_ms)
+{
+    if (!timeout_ms)
+        return sem_trywait ((sem_t*) sema);
+
+    struct timespec ts;
+
+    ts.tv_sec = 0;
+    ts.tv_nsec = timeout_ms * 1000000;
+
+    return sem_timedwait ((sem_t*) sema, &ts);
+}
+
 void Semaphore_Post(Semaphore* sema, int count)
 {
     for (int i = 0; i < count; i++)
@@ -322,6 +348,16 @@ bool Mutex_TryLock(Mutex* mutex)
 void Sleep(u64 usecs)
 {
     g_usleep (usecs);
+}
+
+u64 GetMSCount()
+{
+    return 0; // This is only needed for netplay
+}
+
+u64 GetUSCount()
+{
+    return 0; // This is only needed for netplay
 }
 
 void WriteNDSSave(const u8* savedata, u32 savelen, u32 writeoffset, u32 writelen, void* userdata)
@@ -414,6 +450,12 @@ void Camera_Stop(int num, void* userdata)
 void Camera_CaptureFrame(int num, u32* frame, int width, int height, bool yuv, void* userdata)
 {
 }
+
+bool Addon_KeyDown(KeyType type, void* userdata)
+{
+    return false;
+}
+
 
 void Addon_RumbleStart(u32 len, void* userdata)
 {
