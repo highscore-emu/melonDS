@@ -25,6 +25,10 @@
 
 #include <semaphore.h>
 
+#include "../mic_blow.h"
+
+#define MIC_SAMPLE_LENGTH 735
+
 namespace melonDS::Platform
 {
 
@@ -437,6 +441,41 @@ int Net_SendPacket(u8* data, int len, void* userdata)
 int Net_RecvPacket(u8* data, void* userdata)
 {
     return 0;
+}
+
+void Mic_Start(void* userdata)
+{
+}
+
+void Mic_Stop(void* userdata)
+{
+}
+
+int Mic_ReadInput(s16* data, int maxlength, void* userdata)
+{
+  static int sample_pos = 0;
+
+  if (melonds_core_get_mic_active ()) {
+    int sample_len = sizeof (mic_blow) / sizeof (u16);
+
+    s16 tmp[MIC_SAMPLE_LENGTH];
+
+    for (int i = 0; i < MIC_SAMPLE_LENGTH; i++) {
+      tmp[i] = mic_blow[sample_pos] ^ 0x8000;
+
+      sample_pos++;
+      if (sample_pos >= sample_len)
+        sample_pos = 0;
+    }
+
+    memcpy (data, tmp, MIC_SAMPLE_LENGTH * sizeof(s16));
+
+    return MIC_SAMPLE_LENGTH;
+  }
+
+  sample_pos = 0;
+
+  return 0;
 }
 
 void Camera_Start(int num, void* userdata)
