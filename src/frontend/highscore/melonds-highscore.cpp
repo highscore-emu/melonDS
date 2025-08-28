@@ -649,7 +649,7 @@ melonds_core_get_cache_path (void)
 }
 
 gboolean
-melonds_core_get_mic_enabled (void)
+melonds_core_get_mic_active (void)
 {
   return MELONDS_CORE (core)->mic_active;
 }
