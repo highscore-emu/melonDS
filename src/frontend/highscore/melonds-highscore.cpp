@@ -16,8 +16,8 @@
 
 #define SCREEN_WIDTH 256
 #define SCREEN_HEIGHT 192
-#define SAMPLE_RATE 32823.6328125
-#define MAX_SAMPLES 1500
+#define SAMPLE_RATE 48000
+#define MAX_SAMPLES 2500
 #define VOLUME_MULTIPLIER 1.5
 #define N_BAD_FRAMES 1
 
@@ -350,6 +350,8 @@ melonds_core_load_rom (HsCore      *core,
     OpenGL::LoadShaderCache ();
 
   self->audio_buffer = g_new0 (gint16, MAX_SAMPLES);
+
+  self->console->SPU.SetOutputSampleRate (SAMPLE_RATE);
 
   return TRUE;
 }
