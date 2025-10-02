@@ -455,27 +455,33 @@ int Mic_ReadInput(s16* data, int maxlength, void* userdata)
 {
   static int sample_pos = 0;
 
-  if (melonds_core_get_mic_active ()) {
-    int sample_len = sizeof (mic_blow) / sizeof (u16);
-
-    s16 tmp[MIC_SAMPLE_LENGTH];
-
-    for (int i = 0; i < MIC_SAMPLE_LENGTH; i++) {
-      tmp[i] = mic_blow[sample_pos] ^ 0x8000;
-
-      sample_pos++;
-      if (sample_pos >= sample_len)
-        sample_pos = 0;
-    }
-
-    memcpy (data, tmp, MIC_SAMPLE_LENGTH * sizeof(s16));
-
-    return MIC_SAMPLE_LENGTH;
+  if (!melonds_core_get_mic_active ()) {
+    sample_pos = 0;
+    memset (data, 0, maxlength * sizeof (s16));
+    return maxlength;
   }
 
-  sample_pos = 0;
+  int read_length = 0;
+  int sample_len = sizeof (mic_blow) / sizeof (s16);
 
-  return 0;
+  while (read_length < maxlength) {
+    int this_len = maxlength - read_length;
+    if ((sample_pos + this_len) > sample_len)
+      this_len = sample_len - sample_pos;
+
+    if (!this_len)
+      break;
+
+    memcpy (data, mic_blow, this_len * sizeof (s16));
+    data += this_len;
+    sample_pos += this_len;
+    if (sample_pos >= sample_len)
+      sample_pos -= sample_len;
+
+    read_length += this_len;
+  }
+
+  return read_length;
 }
 
 void Camera_Start(int num, void* userdata)
