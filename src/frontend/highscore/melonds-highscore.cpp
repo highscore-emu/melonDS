@@ -18,7 +18,6 @@
 #define SCREEN_HEIGHT 192
 #define SAMPLE_RATE 48000
 #define MAX_SAMPLES 2500
-#define VOLUME_MULTIPLIER 1.5
 #define N_BAD_FRAMES 1
 
 #define USE_GL 0
@@ -459,9 +458,6 @@ melonds_core_run_frame (HsCore *core)
 
   u32 n_samples = self->console->SPU.GetOutputSize ();
   self->console->SPU.ReadOutput (self->audio_buffer, n_samples);
-
-  for (int i = 0; i < n_samples * 2; i++)
-    self->audio_buffer[i] *= VOLUME_MULTIPLIER;
 
   hs_core_play_samples (core, self->audio_buffer, n_samples * 2);
 
