@@ -247,6 +247,38 @@ try_migrate_desmume_save (const char *rom_path, const char *save_path, GError **
 }
 
 static gboolean
+load_rtc (melonDSCore  *self,
+          GError      **error)
+{
+  g_print ("Load\n");
+  auto file = Platform::OpenLocalFile ("rtc.bin", Platform::FileMode::Read);
+  if (file) {
+    RTC::StateData state;
+    Platform::FileRead (&state, sizeof (state), 1, file);
+    Platform::CloseFile (file);
+    self->console->RTC.SetState (state);
+  }
+
+  return TRUE;
+}
+
+static gboolean
+save_rtc (melonDSCore  *self,
+          GError      **error)
+{
+  g_print ("Save\n");
+  auto file = Platform::OpenLocalFile ("rtc.bin", Platform::FileMode::Write);
+  if (file) {
+    RTC::StateData state;
+    self->console->RTC.GetState (state);
+    Platform::FileWrite (&state, sizeof (state), 1, file);
+    Platform::CloseFile (file);
+  }
+
+  return TRUE;
+}
+
+static gboolean
 melonds_core_load_rom (HsCore      *core,
                        const char **rom_paths,
                        int          n_rom_paths,
@@ -345,6 +377,9 @@ melonds_core_load_rom (HsCore      *core,
   self->console->SetNDSCart (std::move (cart));
   self->console->Reset ();
 
+  if (!load_rtc (self, error))
+    return FALSE;
+
   if (self->console->NeedsDirectBoot ())
     self->console->SetupDirectBoot ("");
 
@@ -385,6 +420,10 @@ melonds_core_reset (HsCore *core, gboolean hard, GError **error)
 
   /* The first couple frames will be bad, skip them */
   self->skip_frames = N_BAD_FRAMES;
+
+  if (!load_rtc (self, error))
+    return FALSE;
+
   return TRUE;
 }
 
@@ -528,6 +567,21 @@ melonds_core_reload_save (HsCore      *core,
 
   g_set_str (&self->save_path, g_file_get_path (save_file));
 
+  if (!load_rtc (self, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+static gboolean
+melonds_core_sync_save (HsCore  *core,
+                        GError **error)
+{
+  melonDSCore *self = MELONDS_CORE (core);
+
+  if (!save_rtc (self, error))
+    return FALSE;
+
   return TRUE;
 }
 
@@ -629,6 +683,7 @@ melonds_core_class_init (melonDSCoreClass *klass)
   core_class->run_frame = melonds_core_run_frame;
 
   core_class->reload_save = melonds_core_reload_save;
+  core_class->sync_save = melonds_core_sync_save;
 
   core_class->load_state = melonds_core_load_state;
   core_class->save_state = melonds_core_save_state;
