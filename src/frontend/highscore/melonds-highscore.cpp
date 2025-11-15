@@ -515,7 +515,7 @@ melonds_core_load_state (HsCore          *core,
   melonDSCore *self = MELONDS_CORE (core);
   g_autofree char *data = NULL;
   gsize length;
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   if (!g_file_get_contents (path, &data, &length, &error)) {
     callback (core, &error);
@@ -544,7 +544,7 @@ melonds_core_save_state (HsCore          *core,
 {
   melonDSCore *self = MELONDS_CORE (core);
   g_autoptr (GFile) file = g_file_new_for_path (path);
-  GError *error = NULL;
+  g_autoptr (GError) error = NULL;
 
   Savestate state (Savestate::DEFAULT_SIZE);
 
