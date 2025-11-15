@@ -250,7 +250,6 @@ static gboolean
 load_rtc (melonDSCore  *self,
           GError      **error)
 {
-  g_print ("Load\n");
   auto file = Platform::OpenLocalFile ("rtc.bin", Platform::FileMode::Read);
   if (file) {
     RTC::StateData state;
@@ -266,7 +265,6 @@ static gboolean
 save_rtc (melonDSCore  *self,
           GError      **error)
 {
-  g_print ("Save\n");
   auto file = Platform::OpenLocalFile ("rtc.bin", Platform::FileMode::Write);
   if (file) {
     RTC::StateData state;
