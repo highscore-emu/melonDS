@@ -17,7 +17,7 @@ if (USE_VCPKG)
 endif()
 
 project(melonDS
-    VERSION 1.0
+    VERSION 1.1
     DESCRIPTION "DS emulator, sorta"
     HOMEPAGE_URL "https://melonds.kuribo64.net"
     LANGUAGES C CXX)
@@ -63,7 +63,7 @@ detect_architecture("__arm__" ARM)
 detect_architecture("__aarch64__" ARM64)
 
 cmake_dependent_option(ENABLE_JIT "Enable JIT recompiler" ON
-    "ARCHITECTURE STREQUAL x86_64 OR ARCHITECTURE STREQUAL ARM64" OFF)
+    "ARCHITECTURE STREQUAL x86_64 OR ARCHITECTURE STREQUAL ARM64;NOT ARCHITECTURE STREQUAL x86_64 OR NOT APPLE" OFF)
 cmake_dependent_option(ENABLE_JIT_PROFILING "Enable JIT profiling with VTune" OFF "ENABLE_JIT" OFF)
 option(ENABLE_OGLRENDERER "Enable OpenGL renderer" ON)
 
