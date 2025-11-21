@@ -5,6 +5,7 @@ include(FixInterfaceIncludes)
 set(SOURCES_HIGHSCORE
     melonds-highscore.cpp
     Platform.cpp
+    Platform_AAC.cpp
 
     ../glad/glad.c
     ../mic_blow.h

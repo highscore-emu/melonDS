@@ -25,6 +25,10 @@
 
 #include <semaphore.h>
 
+#include "../mic_blow.h"
+
+#define MIC_SAMPLE_LENGTH 735
+
 namespace melonDS::Platform
 {
 
@@ -183,6 +187,11 @@ bool FileSeek(FileHandle* file, s64 offset, FileSeekOrigin origin)
 void FileRewind(FileHandle* file)
 {
     rewind(reinterpret_cast<FILE *>(file));
+}
+
+u64 FilePosition(FileHandle* file)
+{
+    return ftell(reinterpret_cast<FILE *>(file));
 }
 
 u64 FileRead(void* data, u64 size, u64 count, FileHandle* file)
@@ -437,6 +446,47 @@ int Net_SendPacket(u8* data, int len, void* userdata)
 int Net_RecvPacket(u8* data, void* userdata)
 {
     return 0;
+}
+
+void Mic_Start(void* userdata)
+{
+}
+
+void Mic_Stop(void* userdata)
+{
+}
+
+int Mic_ReadInput(s16* data, int maxlength, void* userdata)
+{
+  static int sample_pos = 0;
+
+  if (!melonds_core_get_mic_active ()) {
+    sample_pos = 0;
+    memset (data, 0, maxlength * sizeof (s16));
+    return maxlength;
+  }
+
+  int read_length = 0;
+  int sample_len = sizeof (mic_blow) / sizeof (s16);
+
+  while (read_length < maxlength) {
+    int this_len = maxlength - read_length;
+    if ((sample_pos + this_len) > sample_len)
+      this_len = sample_len - sample_pos;
+
+    if (!this_len)
+      break;
+
+    memcpy (data, mic_blow, this_len * sizeof (s16));
+    data += this_len;
+    sample_pos += this_len;
+    if (sample_pos >= sample_len)
+      sample_pos -= sample_len;
+
+    read_length += this_len;
+  }
+
+  return read_length;
 }
 
 void Camera_Start(int num, void* userdata)

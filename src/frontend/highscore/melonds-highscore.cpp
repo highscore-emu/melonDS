@@ -10,18 +10,14 @@
 #include "SPI.h"
 #include "SPU.h"
 
-#include "../mic_blow.h"
-
 #include <cmath>
 
 #include "glad/glad.h"
 
 #define SCREEN_WIDTH 256
 #define SCREEN_HEIGHT 192
-#define SAMPLE_RATE 32823.6328125
-#define MAX_SAMPLES 1500
-#define VOLUME_MULTIPLIER 1.5
-#define MIC_SAMPLE_LENGTH 735
+#define SAMPLE_RATE 48000
+#define MAX_SAMPLES 2500
 #define N_BAD_FRAMES 1
 
 #define USE_GL 0
@@ -48,6 +44,7 @@ struct _melonDSCore
   HsSoftwareContext *context;
 
   gint16 *audio_buffer;
+  gboolean mic_active;
 };
 
 static HsCore *core;
@@ -386,6 +383,8 @@ melonds_core_load_rom (HsCore      *core,
 
   self->audio_buffer = g_new0 (gint16, MAX_SAMPLES);
 
+  self->console->SPU.SetOutputSampleRate (SAMPLE_RATE);
+
   return TRUE;
 }
 
@@ -484,27 +483,7 @@ melonds_core_poll_input (HsCore *core, HsInputState *input_state)
     self->console->ReleaseScreen ();
   }
 
-  static int sample_pos = 0;
-
-  if (input_state->nintendo_ds.mic_active) {
-    int sample_len = sizeof (mic_blow) / sizeof (u16);
-
-    s16 tmp[MIC_SAMPLE_LENGTH];
-
-    for (int i = 0; i < MIC_SAMPLE_LENGTH; i++) {
-      tmp[i] = mic_blow[sample_pos] ^ 0x8000;
-
-      sample_pos++;
-      if (sample_pos >= sample_len)
-        sample_pos = 0;
-    }
-
-    self->console->MicInputFrame (tmp, MIC_SAMPLE_LENGTH);
-  } else {
-    sample_pos = 0;
-
-    self->console->MicInputFrame (nullptr, 0);
-  }
+  self->mic_active = input_state->nintendo_ds.mic_active;
 }
 
 static void
@@ -516,9 +495,6 @@ melonds_core_run_frame (HsCore *core)
 
   u32 n_samples = self->console->SPU.GetOutputSize ();
   self->console->SPU.ReadOutput (self->audio_buffer, n_samples);
-
-  for (int i = 0; i < n_samples * 2; i++)
-    self->audio_buffer[i] *= VOLUME_MULTIPLIER;
 
   hs_core_play_samples (core, self->audio_buffer, n_samples * 2);
 
@@ -721,6 +697,12 @@ const char *
 melonds_core_get_cache_path (void)
 {
   return hs_core_get_cache_path (core);
+}
+
+gboolean
+melonds_core_get_mic_active (void)
+{
+  return MELONDS_CORE (core)->mic_active;
 }
 
 GType
