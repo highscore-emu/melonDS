@@ -247,7 +247,13 @@ static gboolean
 load_rtc (melonDSCore  *self,
           GError      **error)
 {
-  auto file = Platform::OpenLocalFile ("rtc.bin", Platform::FileMode::Read);
+  g_autoptr (GFile) save_dir = g_file_new_for_path (self->save_path);
+  if (!g_file_query_exists (save_dir, NULL))
+    return TRUE;
+
+  g_autofree char *path = g_build_filename (self->save_path, "rtc.bin", NULL);
+  auto file = Platform::OpenLocalFile (path, Platform::FileMode::Read);
+
   if (file) {
     RTC::StateData state;
     Platform::FileRead (&state, sizeof (state), 1, file);
@@ -262,7 +268,13 @@ static gboolean
 save_rtc (melonDSCore  *self,
           GError      **error)
 {
-  auto file = Platform::OpenLocalFile ("rtc.bin", Platform::FileMode::Write);
+  g_autoptr (GFile) save_dir = g_file_new_for_path (self->save_path);
+  if (!g_file_query_exists (save_dir, NULL) && !g_file_make_directory_with_parents (save_dir, NULL, error))
+    return FALSE;
+
+  g_autofree char *path = g_build_filename (self->save_path, "rtc.bin", NULL);
+  auto file = Platform::OpenLocalFile (path, Platform::FileMode::Write);
+
   if (file) {
     RTC::StateData state;
     self->console->RTC.GetState (state);
@@ -295,7 +307,7 @@ melonds_core_load_rom (HsCore      *core,
 
   g_autoptr (GFile) save_file = g_file_get_child (save_dir, "save.sav");
 
-  g_set_str (&self->save_path, g_file_get_path (save_file));
+  g_set_str (&self->save_path, save_path);
 
   NDSArgs nds_args = {};
   self->console = new NDS (std::move (nds_args), self);
@@ -539,7 +551,7 @@ melonds_core_reload_save (HsCore      *core,
     self->console->GetNDSCart ()->SetSaveMemory ((const u8*) save_data, save_length);
   }
 
-  g_set_str (&self->save_path, g_file_get_path (save_file));
+  g_set_str (&self->save_path, save_path);
 
   if (!load_rtc (self, error))
     return FALSE;
