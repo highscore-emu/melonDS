@@ -285,6 +285,21 @@ save_rtc (melonDSCore  *self,
   return TRUE;
 }
 
+static void
+reset_rtc (melonDSCore *self)
+{
+  g_autoptr (GDateTime) datetime = g_date_time_new_now_local ();
+
+  int year, month, day, hour, minute, second;
+
+  g_date_time_get_ymd (datetime, &year, &month, &day);
+  hour = g_date_time_get_hour (datetime);
+  minute = g_date_time_get_minute (datetime);
+  second = g_date_time_get_second (datetime);
+
+  self->console->RTC.SetDateTime (year, month, day, hour, minute, second);
+}
+
 static gboolean
 melonds_core_load_rom (HsCore      *core,
                        const char **rom_paths,
@@ -397,6 +412,8 @@ melonds_core_load_rom (HsCore      *core,
 
   self->console->SPU.SetOutputSampleRate (SAMPLE_RATE);
 
+  reset_rtc (self);
+
   return TRUE;
 }
 
@@ -423,6 +440,8 @@ melonds_core_reset (HsCore *core, gboolean hard, GError **error)
   melonDSCore *self = MELONDS_CORE (core);
 
   self->console->Reset ();
+
+  reset_rtc (self);
 
   if (self->console->NeedsDirectBoot ())
     self->console->SetupDirectBoot ("");
@@ -502,6 +521,8 @@ static void
 melonds_core_run_frame (HsCore *core)
 {
   melonDSCore *self = MELONDS_CORE (core);
+
+  reset_rtc (self);
 
   self->console->RunFrame ();
 
