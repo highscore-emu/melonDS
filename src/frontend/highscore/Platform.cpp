@@ -372,7 +372,8 @@ u64 GetUSCount()
 void WriteNDSSave(const u8* savedata, u32 savelen, u32 writeoffset, u32 writelen, void* userdata)
 {
     const char *save_path = melonds_core_get_save_path ();
-    g_autoptr (GFile) save_file = g_file_new_for_path (save_path);
+    g_autoptr (GFile) save_dir = g_file_new_for_path (save_path);
+    g_autoptr (GFile) save_file = g_file_get_child (save_dir, "save.sav");
     g_autoptr (GError) error = NULL;
 
     if (!g_file_replace_contents (save_file, (char*) savedata, savelen, NULL, FALSE,
@@ -393,6 +394,7 @@ void WriteFirmware(const Firmware& firmware, u32 writeoffset, u32 writelen, void
 
 void WriteDateTime(int year, int month, int day, int hour, int minute, int second, void* userdata)
 {
+    // We'll need this if we boot into BIOS and can use the built-in date/time picker
 }
 
 void MP_Begin(void* userdata)
