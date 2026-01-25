@@ -33,7 +33,7 @@ target_include_directories(melonds-highscore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}
 target_include_directories(melonds-highscore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_include_directories(melonds-highscore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 target_link_libraries(melonds-highscore PRIVATE core)
-target_link_libraries(melonds-highscore PRIVATE PkgConfig::highscore-1 PkgConfig::glib-2.0 PkgConfig::gobject-2.0 PkgConfig::gmodule-2.0)
+target_link_libraries(melonds-highscore PRIVATE PkgConfig::highscore-1 PkgConfig::glib-2.0 PkgConfig::gobject-2.0)
 target_link_libraries(melonds-highscore PRIVATE ${CMAKE_DL_LIBS})
 add_subdirectory("../../net"
     ${CMAKE_BINARY_DIR}/net)
