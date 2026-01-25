@@ -15,7 +15,6 @@
 #include "SPU.h"
 
 #include <cmath>
-#include <glib.h>
 
 #include "glad/glad.h"
 
@@ -48,11 +47,11 @@ struct _melonDSCore
 
   HsSoftwareContext *context;
 
+  GTimer *timer;
+
   gint16 *audio_buffer;
   gboolean mic_active;
 };
-
-GTimer *timer;
 
 Net net;
 
@@ -309,14 +308,14 @@ reset_rtc (melonDSCore *self)
   self->console->RTC.SetDateTime (year, month, day, hour, minute, second);
 }
 
-void net_init()
+void net_init (melonDSCore *self)
 {
-    timer = g_timer_new();
+    self->timer = g_timer_new ();
 
-    net.SetDriver(std::make_unique<Net_Slirp>([](const u8* data, int len) {
-        net.RXEnqueue(data, len);
+    net.SetDriver (std::make_unique<Net_Slirp>([](const u8* data, int len) {
+        net.RXEnqueue (data, len);
     }));
-    net.RegisterInstance(0);
+    net.RegisterInstance (0);
 }
 
 static gboolean
@@ -352,7 +351,7 @@ melonds_core_load_rom (HsCore      *core,
     return FALSE;
   }
 
-  net_init();
+  net_init (self);
 
   const char *renderer_env = g_getenv ("HIGHSCORE_MELONDS_RENDERER");
   self->compute = !g_strcmp0 (renderer_env, "compute");
@@ -483,6 +482,8 @@ melonds_core_stop (HsCore *core)
 
   if (self->gl_context && self->compute)
     OpenGL::SaveShaderCache ();
+
+  g_timer_destroy (self->timer);
 
   self->console->Halt ();
   self->console->Stop ();
@@ -757,6 +758,12 @@ gboolean
 melonds_core_get_mic_active (void)
 {
   return MELONDS_CORE (core)->mic_active;
+}
+
+GTimer *
+melonds_core_get_timer (void)
+{
+  return MELONDS_CORE (core)->timer;
 }
 
 GType
