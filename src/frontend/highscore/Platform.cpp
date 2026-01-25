@@ -18,16 +18,21 @@
 
 #include "melonds-highscore.h"
 
+#include "Net.h"
 #include "Platform.h"
 
 #include <mutex>
 #include <thread>
 
+#include <glib.h>
 #include <semaphore.h>
 
 #include "../mic_blow.h"
 
 #define MIC_SAMPLE_LENGTH 735
+
+extern GTimer *timer;
+extern melonDS::Net net;
 
 namespace melonDS::Platform
 {
@@ -361,12 +366,16 @@ void Sleep(u64 usecs)
 
 u64 GetMSCount()
 {
-    return 0; // This is only needed for netplay
+    gulong *microseconds;
+    g_timer_elapsed(timer, microseconds);
+    return *microseconds / 1000;
 }
 
 u64 GetUSCount()
 {
-    return 0; // This is only needed for netplay
+    gulong *microseconds;
+    g_timer_elapsed(timer, microseconds);
+    return *microseconds;
 }
 
 void WriteNDSSave(const u8* savedata, u32 savelen, u32 writeoffset, u32 writelen, void* userdata)
@@ -442,12 +451,15 @@ u16 MP_RecvReplies(u8* data, u64 timestamp, u16 aidmask, void* userdata)
 
 int Net_SendPacket(u8* data, int len, void* userdata)
 {
+    int inst = InstanceID();
+    net.SendPacket(data, len, inst);
     return 0;
 }
 
 int Net_RecvPacket(u8* data, void* userdata)
 {
-    return 0;
+    int inst = InstanceID();
+    return net.RecvPacket(data, inst);
 }
 
 void Mic_Start(void* userdata)
