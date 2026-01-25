@@ -21,6 +21,7 @@ execute_process(COMMAND git describe --always --dirty --match ''
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 pkg_check_modules(highscore-1 REQUIRED IMPORTED_TARGET highscore-1)
+pkg_check_modules(glib-2.0 REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_check_modules(gobject-2.0 REQUIRED IMPORTED_TARGET gobject-2.0)
 
 fix_interface_includes(PkgConfig::highscore-1)
@@ -32,8 +33,11 @@ target_include_directories(melonds-highscore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}
 target_include_directories(melonds-highscore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_include_directories(melonds-highscore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 target_link_libraries(melonds-highscore PRIVATE core)
-target_link_libraries(melonds-highscore PRIVATE PkgConfig::highscore-1 PkgConfig::gobject-2.0)
+target_link_libraries(melonds-highscore PRIVATE PkgConfig::highscore-1 PkgConfig::glib-2.0 PkgConfig::gobject-2.0 PkgConfig::gmodule-2.0)
 target_link_libraries(melonds-highscore PRIVATE ${CMAKE_DL_LIBS})
+add_subdirectory("../../net"
+    ${CMAKE_BINARY_DIR}/net)
+target_link_libraries(melonds-highscore PRIVATE net-utils)
 
 set(MELONDS_GL_HEADER \"frontend/glad/glad.h\" CACHE STRING "Path to a header that contains OpenGL function and type declarations.")
 
