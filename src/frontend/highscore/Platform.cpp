@@ -541,16 +541,22 @@ float Addon_MotionQuery(MotionQueryType type, void* userdata)
 
 DynamicLibrary* DynamicLibrary_Load(const char* lib)
 {
-    return nullptr;
+    return (DynamicLibrary*) g_module_open (lib, (GModuleFlags) 0);
 }
 
 void DynamicLibrary_Unload(DynamicLibrary* lib)
 {
+  g_module_close ((GModule *) lib);
 }
 
 void* DynamicLibrary_LoadFunction(DynamicLibrary* lib, const char* name)
 {
-    return nullptr;
+  gpointer ret;
+
+  if (g_module_symbol ((GModule *) lib, name, &ret))
+    return ret;
+
+  return NULL;
 }
 
 }
