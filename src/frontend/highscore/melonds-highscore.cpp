@@ -34,6 +34,7 @@ struct _melonDSCore
   HsCore parent_instance;
 
   NDS *console;
+  Net *net;
   char *rom_path;
   char *save_path;
 
@@ -52,8 +53,6 @@ struct _melonDSCore
   gint16 *audio_buffer;
   gboolean mic_active;
 };
-
-Net net;
 
 static HsCore *core;
 
@@ -311,12 +310,13 @@ reset_rtc (melonDSCore *self)
 static void
 net_init (melonDSCore *self)
 {
-    self->timer = g_timer_new ();
+  self->net = new Net ();
+  self->timer = g_timer_new ();
 
-    net.SetDriver (std::make_unique<Net_Slirp>([](const u8* data, int len) {
-        net.RXEnqueue (data, len);
-    }));
-    net.RegisterInstance (0);
+  self->net->SetDriver (std::make_unique<Net_Slirp> ([](const u8* data, int len) {
+    MELONDS_CORE (core)->net->RXEnqueue (data, len);
+  }));
+  self->net->RegisterInstance (0);
 }
 
 static gboolean
@@ -484,13 +484,14 @@ melonds_core_stop (HsCore *core)
   if (self->gl_context && self->compute)
     OpenGL::SaveShaderCache ();
 
-  g_timer_destroy (self->timer);
-
   self->console->Halt ();
   self->console->Stop ();
 
   delete self->console;
   self->console = NULL;
+
+  delete self->net;
+  self->net = NULL;
 
   NDS::Current = NULL;
 
@@ -502,6 +503,8 @@ melonds_core_stop (HsCore *core)
     hs_gl_context_unrealize (self->gl_context);
     g_clear_object (&self->gl_context);
   }
+
+  g_clear_pointer (&self->timer, g_timer_destroy);
 
   g_clear_object (&self->context);
   g_clear_pointer (&self->rom_path, g_free);
@@ -761,10 +764,20 @@ melonds_core_get_mic_active (void)
   return MELONDS_CORE (core)->mic_active;
 }
 
-GTimer *
-melonds_core_get_timer (void)
+gulong
+melonds_core_get_microseconds (void)
 {
-  return MELONDS_CORE (core)->timer;
+  gulong ret;
+
+  g_timer_elapsed (MELONDS_CORE (core)->timer, &ret);
+
+  return ret;
+}
+
+Net *
+melonds_core_get_net (void)
+{
+  return MELONDS_CORE (core)->net;
 }
 
 GType
