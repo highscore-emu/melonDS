@@ -443,18 +443,18 @@ u16 MP_RecvReplies(u8* data, u64 timestamp, u16 aidmask, void* userdata)
 
 int Net_SendPacket(u8* data, int len, void* userdata)
 {
-    Net *net = melonds_core_get_net ();
-    int inst = InstanceID ();
+  Net *net = melonds_core_get_net ();
+  int inst = InstanceID ();
 
-    return net->SendPacket (data, len, inst);
+  return net->SendPacket (data, len, inst);
 }
 
 int Net_RecvPacket(u8* data, void* userdata)
 {
-    Net *net = melonds_core_get_net ();
-    int inst = InstanceID ();
+  Net *net = melonds_core_get_net ();
+  int inst = InstanceID ();
 
-    return net->RecvPacket (data, inst);
+  return net->RecvPacket (data, inst);
 }
 
 void Mic_Start(void* userdata)
@@ -537,7 +537,7 @@ float Addon_MotionQuery(MotionQueryType type, void* userdata)
 
 DynamicLibrary* DynamicLibrary_Load(const char* lib)
 {
-    return (DynamicLibrary*) g_module_open (lib, (GModuleFlags) 0);
+  return (DynamicLibrary*) g_module_open (lib, (GModuleFlags) 0);
 }
 
 void DynamicLibrary_Unload(DynamicLibrary* lib)
