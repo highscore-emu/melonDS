@@ -6,6 +6,10 @@
 #include "GPU3D_OpenGL.h"
 #include "GPU3D_Soft.h"
 #include "NDS.h"
+
+#include "Net.h"
+#include "Net_Slirp.h"
+
 #include "Platform.h"
 #include "SPI.h"
 #include "SPU.h"
@@ -43,9 +47,13 @@ struct _melonDSCore
 
   HsSoftwareContext *context;
 
+  GTimer *timer;
+
   gint16 *audio_buffer;
   gboolean mic_active;
 };
+
+Net net;
 
 static HsCore *core;
 
@@ -300,6 +308,17 @@ reset_rtc (melonDSCore *self)
   self->console->RTC.SetDateTime (year, month, day, hour, minute, second);
 }
 
+static void
+net_init (melonDSCore *self)
+{
+    self->timer = g_timer_new ();
+
+    net.SetDriver (std::make_unique<Net_Slirp>([](const u8* data, int len) {
+        net.RXEnqueue (data, len);
+    }));
+    net.RegisterInstance (0);
+}
+
 static gboolean
 melonds_core_load_rom (HsCore      *core,
                        const char **rom_paths,
@@ -332,6 +351,8 @@ melonds_core_load_rom (HsCore      *core,
     g_set_error (error, HS_CORE_ERROR, HS_CORE_ERROR_INTERNAL, "Failed to init the console");
     return FALSE;
   }
+
+  net_init (self);
 
   const char *renderer_env = g_getenv ("HIGHSCORE_MELONDS_RENDERER");
   self->compute = !g_strcmp0 (renderer_env, "compute");
@@ -462,6 +483,8 @@ melonds_core_stop (HsCore *core)
 
   if (self->gl_context && self->compute)
     OpenGL::SaveShaderCache ();
+
+  g_timer_destroy (self->timer);
 
   self->console->Halt ();
   self->console->Stop ();
@@ -736,6 +759,12 @@ gboolean
 melonds_core_get_mic_active (void)
 {
   return MELONDS_CORE (core)->mic_active;
+}
+
+GTimer *
+melonds_core_get_timer (void)
+{
+  return MELONDS_CORE (core)->timer;
 }
 
 GType
