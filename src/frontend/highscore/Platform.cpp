@@ -20,6 +20,7 @@
 
 #include "Net.h"
 #include "Platform.h"
+#include "SPI_Firmware.h"
 
 #include <mutex>
 #include <thread>
@@ -391,6 +392,42 @@ void WriteGBASave(const u8* savedata, u32 savelen, u32 writeoffset, u32 writelen
 
 void WriteFirmware(const Firmware& firmware, u32 writeoffset, u32 writelen, void* userdata)
 {
+  const char *save_path = melonds_core_get_save_path ();
+  g_autoptr (GFile) save_dir = g_file_new_for_path (save_path);
+  g_autoptr (GFile) save_file = g_file_get_child (save_dir, "wfcsettings.bin");
+  g_autoptr (GError) error = NULL;
+
+  if (firmware.GetHeader().Identifier != GENERATED_FIRMWARE_IDENTIFIER) {
+    // If this is not the default built-in firmware...
+    // ...then write the whole thing back.
+    if (!g_file_replace_contents (save_file, (char *) firmware.Buffer (), firmware.Length (), NULL, FALSE,
+                                  G_FILE_CREATE_NONE, NULL, NULL, &error)) {
+      g_autofree char *message = g_strdup_printf ("Failed to save NDS firmware: %s", error->message);
+      melonds_core_log (HS_LOG_CRITICAL, message);
+      return;
+    }
+  } else {
+    u32 eapstart = firmware.GetExtendedAccessPointOffset ();
+    u32 eapend = eapstart + sizeof(firmware.GetExtendedAccessPoints ());
+
+    u32 apstart = firmware.GetWifiAccessPointOffset ();
+    u32 apend = apstart + sizeof(firmware.GetAccessPoints ());
+
+    // assert that the extended access points come just before the regular ones
+    g_assert (eapend == apstart);
+
+    if (eapstart <= writeoffset && writeoffset < apend) {
+      // If we're writing to the access points...
+      const u8* buffer = firmware.GetExtendedAccessPointPosition ();
+      u32 length = sizeof(firmware.GetExtendedAccessPoints ()) + sizeof(firmware.GetAccessPoints());
+      if (!g_file_replace_contents (save_file, (char *) buffer, length, NULL, FALSE,
+                                    G_FILE_CREATE_NONE, NULL, NULL, &error)) {
+        g_autofree char *message = g_strdup_printf ("Failed to save NDS firmware: %s", error->message);
+        melonds_core_log (HS_LOG_CRITICAL, message);
+        return;
+      }
+    }
+  }
 }
 
 void WriteDateTime(int year, int month, int day, int hour, int minute, int second, void* userdata)

@@ -27,6 +27,9 @@
 #define USE_GL 0
 #define USE_COMPUTE 0
 
+#define CONSOLE_TYPE_DS 0
+#define CONSOLE_TYPE_DSI 1
+
 using namespace melonDS;
 
 struct _melonDSCore
@@ -319,6 +322,50 @@ net_init (melonDSCore *self)
   self->net->RegisterInstance (0);
 }
 
+static Firmware
+generate_firmware (melonDSCore *self)
+{
+  Firmware firmware = Firmware (CONSOLE_TYPE_DS);
+  assert (firmware.Buffer() != nullptr);
+
+  g_autoptr (GFile) save_dir = g_file_new_for_path (self->save_path);
+  if (!g_file_query_exists (save_dir, NULL))
+    return firmware;
+
+  g_autofree char *path = g_build_filename (self->save_path, "wfcsettings.bin", NULL);
+  auto file = Platform::OpenLocalFile (path, Platform::FileMode::Read);
+
+  if (file) {
+    constexpr unsigned TOTAL_WFC_SETTINGS_SIZE = 3 * (sizeof(Firmware::WifiAccessPoint) + sizeof(Firmware::ExtendedWifiAccessPoint));
+
+    if (!FileRead(firmware.GetExtendedAccessPointPosition(), TOTAL_WFC_SETTINGS_SIZE, 1, file)) {
+      // If we couldn't read the Wi-fi settings from this file...
+      hs_core_log (HS_CORE (self), HS_LOG_WARNING, "Failed to read Wi-fi settings; using defaults instead");
+
+      // The access point and extended access point segments might
+      // be in different locations depending on the firmware revision,
+      // but our generated firmware always keeps them next to each other.
+      // (Extended access points first, then regular ones.)
+      firmware.GetAccessPoints () = {
+        Firmware::WifiAccessPoint (CONSOLE_TYPE_DS),
+        Firmware::WifiAccessPoint (),
+        Firmware::WifiAccessPoint (),
+      };
+
+      firmware.GetExtendedAccessPoints () = {
+        Firmware::ExtendedWifiAccessPoint (),
+        Firmware::ExtendedWifiAccessPoint (),
+        Firmware::ExtendedWifiAccessPoint (),
+      };
+
+      firmware.UpdateChecksums ();
+      CloseFile (file);
+    }
+  }
+
+  return firmware;
+}
+
 static gboolean
 melonds_core_load_rom (HsCore      *core,
                        const char **rom_paths,
@@ -417,7 +464,11 @@ melonds_core_load_rom (HsCore      *core,
     cart->SetSaveMemory ((const u8*) save_data, save_length);
   }
 
+  auto firmware = generate_firmware (self);
+
+  self->console->SetFirmware(std::move (firmware));
   self->console->SetNDSCart (std::move (cart));
+
   self->console->Reset ();
 
   if (!load_rtc (self, error))
@@ -460,6 +511,9 @@ melonds_core_reset (HsCore *core, gboolean hard, GError **error)
 {
   melonDSCore *self = MELONDS_CORE (core);
 
+  auto firmware = generate_firmware (self);
+
+  self->console->SetFirmware(std::move (firmware));
   self->console->Reset ();
 
   reset_rtc (self);
@@ -585,6 +639,10 @@ melonds_core_reload_save (HsCore      *core,
 
   if (!try_migrate_desmume_save (self->rom_path, save_path, error))
     return FALSE;
+
+  auto firmware = generate_firmware (self);
+
+  self->console->SetFirmware(std::move (firmware));
 
   g_autoptr (GFile) save_dir = g_file_new_for_path (save_path);
   g_autoptr (GFile) save_file = g_file_get_child (save_dir, "save.sav");
