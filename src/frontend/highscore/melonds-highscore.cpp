@@ -308,7 +308,8 @@ reset_rtc (melonDSCore *self)
   self->console->RTC.SetDateTime (year, month, day, hour, minute, second);
 }
 
-void net_init (melonDSCore *self)
+static void
+net_init (melonDSCore *self)
 {
     self->timer = g_timer_new ();
 

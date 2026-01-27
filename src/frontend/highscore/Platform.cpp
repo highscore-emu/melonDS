@@ -364,13 +364,7 @@ void Sleep(u64 usecs)
 
 u64 GetMSCount()
 {
-    GTimer *timer;
-    gulong microseconds;
-
-    timer = melonds_core_get_timer ();
-    g_timer_elapsed(timer, &microseconds);
-
-    return microseconds / 1000;
+    return GetUSCount () / 1000;
 }
 
 u64 GetUSCount()
@@ -379,7 +373,7 @@ u64 GetUSCount()
     gulong microseconds;
 
     timer = melonds_core_get_timer ();
-    g_timer_elapsed(timer, &microseconds);
+    g_timer_elapsed (timer, &microseconds);
 
     return microseconds;
 }
