@@ -486,7 +486,7 @@ int Mic_ReadInput(s16* data, int maxlength, void* userdata)
     if (!this_len)
       break;
 
-    memcpy (data, mic_blow, this_len * sizeof (s16));
+    memcpy (data, &mic_blow[sample_pos], this_len * sizeof (s16));
     data += this_len;
     sample_pos += this_len;
     if (sample_pos >= sample_len)
