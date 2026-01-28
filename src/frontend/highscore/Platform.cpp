@@ -36,6 +36,8 @@ namespace melonDS::Platform
 
 void SignalStop(StopReason reason, void* userdata)
 {
+  if (reason == StopReason::PowerOff)
+    melonds_core_power_off ();
 }
 
 int InstanceID()

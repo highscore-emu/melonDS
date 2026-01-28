@@ -609,7 +609,8 @@ melonds_core_run_frame (HsCore *core)
   u32 n_samples = self->console->SPU.GetOutputSize ();
   self->console->SPU.ReadOutput (self->audio_buffer, n_samples);
 
-  hs_core_play_samples (core, self->audio_buffer, n_samples * 2);
+  if (n_samples > 0)
+    hs_core_play_samples (core, self->audio_buffer, n_samples * 2);
 
   if (self->skip_frames > 0) {
     self->skip_frames--;
@@ -802,6 +803,12 @@ void
 melonds_core_log (HsLogLevel level, const char *message)
 {
   hs_core_log_literal (core, level, message);
+}
+
+void
+melonds_core_power_off (void)
+{
+  hs_core_power_off (core);
 }
 
 const char *
