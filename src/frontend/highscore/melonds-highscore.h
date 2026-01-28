@@ -11,6 +11,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (melonDSCore, melonds_core, MELONDS, CORE, HsCore)
 
 void melonds_core_log (HsLogLevel level, const char *message);
+void melonds_core_power_off (void);
 
 const char *melonds_core_get_save_path (void);
 const char *melonds_core_get_cache_path (void);
