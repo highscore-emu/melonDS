@@ -579,6 +579,9 @@ melonds_core_poll_input (HsCore *core, HsInputState *input_state)
   melonDSCore *self = MELONDS_CORE (core);
   u32 mask = 0xfff;
 
+  if (self->console->IsLidClosed ())
+    return;
+
   for (int btn = 0; btn < HS_NINTENDO_DS_N_BUTTONS; btn++) {
     if (input_state->nintendo_ds.buttons & 1 << btn)
       mask &= ~(1 << BUTTON_MAPPING[btn]);
@@ -795,8 +798,17 @@ melonds_core_init (melonDSCore *self)
 }
 
 static void
+melonds_nintendo_ds_core_set_lid_closed (HsNintendoDsCore *core, gboolean closed)
+{
+  melonDSCore *self = MELONDS_CORE (core);
+
+  self->console->SetLidClosed (closed);
+}
+
+static void
 melonds_nintendo_ds_core_init (HsNintendoDsCoreInterface *iface)
 {
+  iface->set_lid_closed = melonds_nintendo_ds_core_set_lid_closed;
 }
 
 void
