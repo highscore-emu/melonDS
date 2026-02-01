@@ -2,9 +2,8 @@
 
 #include "FreeBIOS.h"
 #include "GPU.h"
-#include "GPU3D_Compute.h"
-#include "GPU3D_OpenGL.h"
-#include "GPU3D_Soft.h"
+#include "GPU_Soft.h"
+#include "GPU_OpenGL.h"
 #include "NDS.h"
 
 #include "Net.h"
@@ -23,9 +22,6 @@
 #define SAMPLE_RATE 48000
 #define MAX_SAMPLES 2500
 #define N_BAD_FRAMES 1
-
-#define USE_GL 0
-#define USE_COMPUTE 0
 
 #define CONSOLE_TYPE_DS 0
 #define CONSOLE_TYPE_DSI 1
@@ -67,9 +63,9 @@ G_DEFINE_FINAL_TYPE_WITH_CODE (melonDSCore, melonds_core, HS_TYPE_CORE,
 static const char *VERTEX_SHADER = R"(#version 140
 
 in vec2 vPosition;
-in vec2 vTexcoord;
+in vec3 vTexcoord;
 
-smooth out vec2 fTexcoord;
+smooth out vec3 fTexcoord;
 
 void main()
 {
@@ -80,9 +76,9 @@ void main()
 
 static const char *FRAGMENT_SHADER = R"(#version 140
 
-uniform sampler2D ScreenTex;
+uniform sampler2DArray ScreenTex;
 
-smooth in vec2 fTexcoord;
+smooth in vec3 fTexcoord;
 
 out vec4 oColor;
 
@@ -90,7 +86,7 @@ void main()
 {
   vec4 pixel = texture(ScreenTex, fTexcoord);
 
-  oColor = vec4(pixel.bgr, 1.0);
+  oColor = vec4(pixel.rgb, 1.0);
 }
 )";
 
@@ -106,23 +102,20 @@ gl_init (melonDSCore *self)
   glUseProgram (self->program);
   glUniform1i (glGetUniformLocation (self->program, "ScreenTex"), 0);
 
-  const int padded_height = SCREEN_HEIGHT * 2 + 2;
-  const float pad_pixels = 1.f / padded_height;
-
   const float vertices[] = {
-    0.f, 0.f,  0.f, 0.f,
-    0.f, 0.5f, 0.f, 0.5f - pad_pixels,
-    1.f, 0.5f, 1.f, 0.5f - pad_pixels,
-    0.f, 0.f,  0.f, 0.f,
-    1.f, 0.5f, 1.f, 0.5f - pad_pixels,
-    1.f, 0.f,  1.f, 0.f,
+    0.f, 0.f,  0.f, 0.f, 0.0,
+    0.f, 0.5f, 0.f, 1.f, 0.0,
+    1.f, 0.5f, 1.f, 1.f, 0.0,
+    0.f, 0.f,  0.f, 0.f, 0.0,
+    1.f, 0.5f, 1.f, 1.f, 0.0,
+    1.f, 0.f,  1.f, 0.f, 0.0,
 
-    0.f, 0.5f, 0.f, 0.5f + pad_pixels,
-    0.f, 1.f,  0.f, 1.f,
-    1.f, 1.f,  1.f, 1.f,
-    0.f, 0.5f, 0.f, 0.5f + pad_pixels,
-    1.f, 1.f,  1.f, 1.f,
-    1.f, 0.5f, 1.f, 0.5f + pad_pixels,
+    0.f, 0.5f, 0.f, 0.f, 1.0,
+    0.f, 1.f,  0.f, 1.f, 1.0,
+    1.f, 1.f,  1.f, 1.f, 1.0,
+    0.f, 0.5f, 0.f, 0.f, 1.0,
+    1.f, 1.f,  1.f, 1.f, 1.0,
+    1.f, 0.5f, 1.f, 0.f, 1.0,
   };
 
   glGenBuffers (1, &self->vertex_buffer);
@@ -132,17 +125,18 @@ gl_init (melonDSCore *self)
   glGenVertexArrays (1, &self->vertex_array);
   glBindVertexArray (self->vertex_array);
   glEnableVertexAttribArray (0); // position
-  glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, 4*4, (void*)(0));
+  glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, 5*4, (void*)(0));
   glEnableVertexAttribArray (1); // texcoord
-  glVertexAttribPointer (1, 2, GL_FLOAT, GL_FALSE, 4*4, (void*)(2*4));
+  glVertexAttribPointer (1, 3, GL_FLOAT, GL_FALSE, 5*4, (void*)(2*4));
 }
 
 static void
 gl_draw_frame (melonDSCore *self)
 {
-  int front_buf = self->console->GPU.FrontBuffer;
-  if (!self->console->GPU.Framebuffer[front_buf][0].get () || !self->console->GPU.Framebuffer[front_buf][1].get ())
-    return;
+  gpointer top, bottom;
+
+  // Only top is set here and it's a texture array
+  g_assert (!self->console->GetRenderer ().GetFramebuffers (&top, &bottom));
 
   glBindFramebuffer (GL_FRAMEBUFFER, hs_gl_context_get_default_framebuffer (self->gl_context));
   glDisable (GL_DEPTH_TEST);
@@ -157,7 +151,8 @@ gl_draw_frame (melonDSCore *self)
   glUseProgram (self->program);
   glActiveTexture (GL_TEXTURE0);
 
-  self->console->GPU.GetRenderer3D ().BindOutputTexture (front_buf);
+  GLuint texid = *(GLuint*) top;
+  glBindTexture (GL_TEXTURE_2D_ARRAY, texid);
 
   glBindBuffer (GL_ARRAY_BUFFER, self->vertex_buffer);
   glBindVertexArray (self->vertex_array);
@@ -411,21 +406,21 @@ melonds_core_load_rom (HsCore      *core,
     if (hs_gl_context_realize (self->gl_context, NULL) && gladLoadGLLoader (get_proc_address)) {
       hs_gl_context_set_size (self->gl_context, SCREEN_WIDTH, SCREEN_HEIGHT * 2);
 
-      if (self->compute) {
-        auto renderer = ComputeRenderer::New ();
-        renderer->SetRenderSettings (1, true);
+      self->console->SetRenderer (std::make_unique<GLRenderer> (*self->console, self->compute));
 
-        self->console->GPU.SetRenderer3D (std::move (renderer));
+      RendererSettings settings = {
+        .ScaleFactor = 1,
+        .Threaded = true,
+        .HiresCoordinates = false,
+        .BetterPolygons = false
+      };
 
+      self->console->GetRenderer ().SetRenderSettings (settings);
+
+      if (self->compute)
         hs_core_log_literal (core, HS_LOG_MESSAGE, "Using compute GL renderer");
-      } else {
-        auto renderer = GLRenderer::New ();
-        renderer->SetRenderSettings (false, 1);
-
-        self->console->GPU.SetRenderer3D (std::move (renderer));
-
+      else
         hs_core_log_literal (core, HS_LOG_MESSAGE, "Using GL renderer");
-      }
 
       gl_init (self);
     } else {
@@ -439,8 +434,7 @@ melonds_core_load_rom (HsCore      *core,
   if (!self->gl_context) {
     self->context = hs_core_create_software_context (core, SCREEN_WIDTH, SCREEN_HEIGHT * 2, HS_PIXEL_FORMAT_B8G8R8X8);
 
-    auto renderer = std::make_unique<SoftRenderer> ();
-    self->console->GPU.SetRenderer3D (std::move (renderer));
+    self->console->SetRenderer (std::make_unique<SoftRenderer> (*self->console));
   }
 
   g_autofree char *rom_data = NULL;
@@ -477,7 +471,7 @@ melonds_core_load_rom (HsCore      *core,
   if (self->console->NeedsDirectBoot ())
     self->console->SetupDirectBoot ("");
 
-  if (self->gl_context && self->compute)
+  if (self->gl_context)
     OpenGL::LoadShaderCache ();
 
   self->audio_buffer = g_new0 (gint16, MAX_SAMPLES);
@@ -499,8 +493,8 @@ melonds_core_start (HsCore *core)
   int current_shader, shaders_count;
 
   do {
-    self->console->GPU.GetRenderer3D ().ShaderCompileStep (current_shader, shaders_count);
-  } while (self->console->GPU.GetRenderer3D ().NeedsShaderCompile ());
+    self->console->GetRenderer ().ShaderCompileStep (current_shader, shaders_count);
+  } while (self->console->GetRenderer ().NeedsShaderCompile ());
 
   /* The first couple frames will be bad, skip them */
   self->skip_frames = N_BAD_FRAMES;
@@ -535,7 +529,7 @@ melonds_core_stop (HsCore *core)
 {
   melonDSCore *self = MELONDS_CORE (core);
 
-  if (self->gl_context && self->compute)
+  if (self->gl_context)
     OpenGL::SaveShaderCache ();
 
   self->console->Halt ();
@@ -629,8 +623,11 @@ melonds_core_run_frame (HsCore *core)
   size_t screen_size = (SCREEN_WIDTH * SCREEN_HEIGHT * 4);
   u8 *vbuf0 = (u8*) hs_software_context_acquire_framebuffer (self->context);
   u8 *vbuf1 = vbuf0 + screen_size;
-  memcpy (vbuf0, self->console->GPU.Framebuffer[self->console->GPU.FrontBuffer][0].get (), screen_size);
-  memcpy (vbuf1, self->console->GPU.Framebuffer[self->console->GPU.FrontBuffer][1].get (), screen_size);
+
+  gpointer top, bottom;
+  g_assert (self->console->GetRenderer ().GetFramebuffers (&top, &bottom));
+  memcpy (vbuf0, top, screen_size);
+  memcpy (vbuf1, bottom, screen_size);
   hs_software_context_release_framebuffer (self->context);
 }
 
