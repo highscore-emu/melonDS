@@ -296,7 +296,7 @@ save_rtc (melonDSCore  *self,
 }
 
 static void
-reset_rtc (melonDSCore *self)
+sync_rtc (melonDSCore *self)
 {
   g_autoptr (GDateTime) datetime = g_date_time_new_now_local ();
 
@@ -484,8 +484,6 @@ melonds_core_load_rom (HsCore      *core,
 
   self->console->SPU.SetOutputSampleRate (SAMPLE_RATE);
 
-  reset_rtc (self);
-
   return TRUE;
 }
 
@@ -515,8 +513,6 @@ melonds_core_reset (HsCore *core, gboolean hard, GError **error)
 
   self->console->SetFirmware(std::move (firmware));
   self->console->Reset ();
-
-  reset_rtc (self);
 
   if (self->console->NeedsDirectBoot ())
     self->console->SetupDirectBoot ("");
@@ -605,7 +601,7 @@ melonds_core_run_frame (HsCore *core)
 {
   melonDSCore *self = MELONDS_CORE (core);
 
-  reset_rtc (self);
+  sync_rtc (self);
 
   self->console->RunFrame ();
 
