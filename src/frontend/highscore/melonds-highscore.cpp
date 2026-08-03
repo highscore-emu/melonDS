@@ -732,7 +732,7 @@ melonds_core_save_state (HsCore          *core,
 static double
 melonds_core_get_frame_rate (HsCore *core)
 {
-  return 60;
+  return 59.8260982880808;
 }
 
 static double
